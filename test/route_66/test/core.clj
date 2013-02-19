@@ -5,16 +5,17 @@
 
 
 
-(deftest test-some-shit-and-fail-if-that-shit-dont-work
+(deftest test-routing
   (testing "Basic route-matching"
-    (let [routes  (r66/routes {:path "/foo" :handler (constantly "foo")}
-                              {:path "/bar" :handler (constantly "bar")})
+    (let [routes  [{:path "/foo" :handler (constantly "foo")}
+                   {:path "/bar" :handler (constantly "bar")}]
           matcher (r66/route-matcher routes)]
       (are [a b] (= a (->> b
                            (mock/request :get)
                            matcher
                            r66/handler
-                           :body))
+                           :body
+                           ))
            "foo" "/foo"
            "bar" "/bar"
            nil   "/baz"))))
