@@ -24,29 +24,42 @@
   (-> basic-handler
       wrap-response-conversion))
 
+(def handler default-handler)
+
 
 (defn compile-routes [routes]
   (mapv (fn [r] (assoc r :compiled-route (clout/route-compile (:path r))))
         routes))
 
+(defn method-matches [request route]
+  (let [route-method  (:method route :get)
+        reqest-method (:request-method request)]
+    (or (= :any route-method)
+        (= route-method reqest-method))))
+
 (defn routed-request [request route]
-  (if-let [route-params (clout/route-matches (:compiled-route route) request)]
-    (-> request
-        (assoc :matched-route route)
-        (assoc :route-params route-params)
-        (merge (select-keys route [:route-data :handler])))))
+  (if (method-matches request route)
+    (if-let [route-params (clout/route-matches (:compiled-route route) request)]
+      (-> request
+          (assoc :matched-route route)
+          (assoc :route-params route-params)
+          (merge (select-keys route [:route-data :handler]))))))
 
 (defn route-matcher
   "Returns a function thats checks a request against each of the given
   routes, and returns the request-map with information about the
-  matched route (if any) merged in. "
+  matched route (if any) merged in. If no route matches, the request
+  map is returned unchanged."
   [routes]
   (let [routes (compile-routes routes)]
     (fn [request]
       (or (some (partial routed-request request) routes)
           request))))
 
-(defn wrap-routing [handler routes]
+(defn wrap-routing
+  "Middleware that inserts information about the matched route into
+  the request."
+  [handler routes]
   (let [matcher (route-matcher routes)]
     (fn [request]
       (let [request (matcher request)]
